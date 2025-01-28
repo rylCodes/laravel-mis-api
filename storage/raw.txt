@@ -1,0 +1,42 @@
+    public function index()
+    {
+        $exercises = Exercise::all();
+        return ExerciseResource::collection($exercises);
+    }
+
+    public function store(Request $request){
+        $request -> validate([
+            'name' => 'required',
+            'slug' => 'required|unique:exercises,slug',
+            'price' => 'required|numeric',
+            'image' => 'mimes:png,jpg,jpeg|max:2048'
+        ]);
+
+        $exercise = new Exercise();
+        $exercise->name = $request->name;
+        $exercise->price = $request->price;
+        $exercise->slug = Str::slug($request->name);
+        $image = $request->file('image');
+        $file_extension = $request->file('image')->extension();
+        $file_name = Carbon::now()->timestamp.'.'.$file_extension;
+        $this->GenerateExerciseThumbnailsImage($image,$file_name);
+        $exercise->image = $file_name;
+        $exercise->save();
+        return new SuccessResponse(data: new ClientResource($client), message: 'Client retrieved successfully');
+    }
+
+    public function GenerateExerciseThumbnailsImage($image, $imageName){
+        $destinationPath = public_path('uploads/exercises');
+        $img = Image::read($image->path());
+        $img->cover(124,124,"top");
+        $img->resize(124,124,function($constraint){
+            $constraint->aspectRatio();
+        })->save($destinationPath.'/'.$imageName);
+    }
+
+
+
+
+
+
+
