@@ -848,131 +848,101 @@ class AdminController extends Controller
         $payroll = EmployeePayroll::with('staff')->get();
 
         return response()->json([
-            'data' => EmployeePayrollResource::collection($payroll)->map(function($item) {
-                $absent = $item->staff->attendances()->whereBetween('date', [$item->start_date, $item->end_date])->where('attendance', 'absent')->count();
-                $whole_day = $item->staff->attendances()->whereBetween('date', [$item->start_date, $item->end_date])->where('attendance', 'present')->count();
-                $half_day = $item->staff->attendances()->whereBetween('date', [$item->start_date, $item->end_date])->where('attendance', 'halfday')->count();
-
-                return [
-                    'id' => $item->id,
-                    'name' => $item->staff->firstname . ' ' . $item->staff->lastname,
-                    'present_day' => $item->present_day,
-                    'total_salary' => $item->total_salary,
-                    'overtime' => $item->over_time,
-                    'yearly_bonus' => $item->yearly_bonus,
-                    'sales_comission' => $item->sales_comission,
-                    'incentives' => $item->incentives,
-                    'sss' => $item->sss,
-                    'pag_ibig' => $item->pag_ibig,
-                    'philhealth' => $item->philhealth,
-                    'net_income' => $item->net_income,
-                    'total_deductions' => $item->total_deductions,
-                    'final_salary' => $item->final_salary,
-                    'start_date' => $item->start_date,
-                    'end_date' => $item->end_date,
-                    'pay_date' => $item->pay_date,
-                    'absent' => $absent,
-                    'whole_day' => $whole_day,
-                    'half_day' => $half_day
-                ];
-            }),
+            'data' => EmployeePayrollResource::collection($payroll),
             'message' => 'Payroll retrieved successfully',
         ], 200);
     }
 
-    public function store_staff_payrolls(Request $request, $id){
+    public function store_staff_payrolls(Request $request, $id)
+    {
         $staff = Staff::find($id);
-        if(!$staff){
+        if (!$staff) {
             return response()->json([
                 'message' => 'Staff not found'
             ], 404);
         }
-
+    
         $validator = Validator::make($request->all(), [
             'staff_id' => 'required',
-            'start_date' => 'required',
-            'end_date' => 'required',
-            'pay_date' => 'required'
+            'start_date' => 'required|date',
+            'end_date' => 'required|date',
+            'pay_date' => 'required|date'
         ]);
-
-        $id = $staff->id;
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors()
+            ], 422);
+        }
+    
+        $staff_id = $staff->id;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $pay_date = $request->pay_date;
-
-        $query = EmployeeAttendance::query()
-        ->when($id, function ($query, $id) {
-            return $query->where('id', $id);
-        })
-        ->when($start_date, function ($query, $start_date) {
-            return $query->whereDate('date', '>=', $start_date);
-        })
-        ->when($end_date, function ($query, $end_date) {
-            return $query->whereDate('date', '<=', $end_date);
-        });
-
-        // $filteredData = $query->with('staff.position')->get();
-        // $present_days = $query->count();
-
-        $whole_days = $query->clone()->where('attendance', 'present')->count();
-        $half_days = $query->clone()->where('attendance', 'halfday')->count();
-        $present_day = $whole_days + $half_days;
-
-        $rate_per_day = 0;
-        switch ($staff->position_id) {
-            // Instructor Rate
-            case 2:
-                $rate_per_day = 520;
-                break;
-            // Cashier Rate
-            case 3:
-                $rate_per_day = 520;
-                break;
-            // Manager Rate
-            case 4:
-                $rate_per_day = 1000;
-                break;
-            // Utility Rate
-            case 5:
-                $rate_per_day = 300;
-                break;
-        }
-
+    
+        $whole_days = EmployeeAttendance::where('staff_id',$staff_id)
+        ->whereBetween('date', [$start_date, $end_date])
+        ->where('attendance', 'present')
+        ->count();
+    
+        $half_days = EmployeeAttendance::where('staff_id',$staff_id)
+            ->whereBetween('date', [$start_date, $end_date])
+            ->where('attendance', 'halfday')
+            ->count();
+        
+        $absents = EmployeeAttendance::where('staff_id',$staff_id)
+            ->whereBetween('date', [$start_date, $end_date])
+            ->where('attendance', 'absent')
+            ->count();
+    
+        $present_days = $whole_days + $half_days;
+    
+        // Define salary rates based on position
+        $rate_per_day = match ($staff->position_id) {
+            2, 3 => 520, // Instructor & Cashier Rate
+            4 => 1000,   // Manager Rate
+            5 => 300,    // Utility Rate
+            default => 0,
+        };
+    
+        // Calculate salary
         $whole_day_salary = $rate_per_day * $whole_days;
-
         $half_day_rate = $rate_per_day / 2;
         $half_day_salary = $half_day_rate * $half_days;
-
         $total_salary = $whole_day_salary + $half_day_salary;
-
-        // Additional Incomes
-        $overtime = $request->over_time;
-        $yearly_bonus = $request->yearly_bonus;
-        $sales_comission = $request->sales_comission;
-        $incentives = $request->incentives;
-
+    
+        // Additional incomes
+        $overtime = $request->over_time ?? 0;
+        $yearly_bonus = $request->yearly_bonus ?? 0;
+        $sales_comission = $request->sales_comission ?? 0;
+        $incentives = $request->incentives ?? 0;
+    
         $net_income = $total_salary + $overtime + $yearly_bonus + $sales_comission + $incentives;
-
+    
         // Deductions
         $sss = 0;
         $pag_ibig = 0;
         $philhealth = 0;
+    
         if (date('d', strtotime($start_date)) <= 15 && date('d', strtotime($end_date)) >= 15) {
             $sss = 0.01 * $net_income;
         }
-
         if (date('d', strtotime($start_date)) <= 30 && date('d', strtotime($end_date)) >= 30) {
             $pag_ibig = 0.04 * $net_income;
             $philhealth = 0.01 * $net_income;
         }
-
+    
         $total_deductions = $staff->position_id === 5 ? 0 : ($sss + $pag_ibig + $philhealth);
-
         $final_salary = $net_income - $total_deductions;
-
+    
+        // Store payroll record
         $payroll = EmployeePayroll::create([
             'staff_id' => $staff->id,
-            'present_day' => $present_day,
+            'salary_rate' => $rate_per_day,
+            'present_days' => $present_days,
+            'absents' => $absents,
+            'whole_days' => $whole_days,
+            'half_days' => $half_days,
             'total_salary' => $total_salary,
             'whole_day_salary' => $whole_day_salary,
             'half_day_salary' => $half_day_salary,
@@ -988,14 +958,15 @@ class AdminController extends Controller
             'final_salary' => $final_salary,
             'start_date' => $start_date,
             'end_date' => $end_date,
-            'pay_date' => $pay_date
+            'pay_date' => $pay_date,
         ]);
-
+    
         return response()->json([
             'data' => new EmployeePayrollResource($payroll),
             'message' => 'Payroll retrieved successfully'
         ]);
     }
+    
 
     public function soft_delete_staff_payrolls(Request $request, $id){
         $soft = EmployeePayroll::find($id);

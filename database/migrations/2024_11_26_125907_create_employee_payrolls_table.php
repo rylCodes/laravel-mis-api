@@ -15,7 +15,11 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('staff_id');
             $table->foreign('staff_id')->references('id')->on('staff')->onDelete('cascade');
-            $table->integer('present_day')->nullable();
+            $table->decimal('salary_rate');
+            $table->integer('present_days')->nullable();
+            $table->integer('absents');
+            $table->integer('whole_days');
+            $table->integer('half_days');
             $table->decimal('total_salary')->nullable();
             $table->decimal('whole_day_salary')->nullable();
             $table->decimal('half_day_salary')->nullable();

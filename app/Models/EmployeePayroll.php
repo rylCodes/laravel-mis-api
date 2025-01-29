@@ -14,7 +14,11 @@ class EmployeePayroll extends Model
 
     protected $fillable = [
         'staff_id',
-        'present_day',
+        'salary_rate',
+        'present_days',
+        'absents',
+        'whole_days',
+        'half_days',
         'total_salary',
         'whole_day_salary',
         'half_day_salary',

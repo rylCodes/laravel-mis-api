@@ -17,8 +17,14 @@ class EmployeePayrollResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->staff->firstname . ' ' . $this->staff->lastname,
-            'present_day' => $this->present_day,
+            'salary_rate' => $this->salary_rate,
+            'present_days' => $this->present_days,
+            'absents' => $this->absents,
+            'whole_days' => $this->whole_days,
+            'half_days' => $this->half_days,
             'total_salary' => $this->total_salary,
+            'whole_day_salary' => $this->whole_day_salary,
+            'half_day_salary' => $this->half_day_salary,
             'overtime' => $this->over_time,
             'yearly_bonus' => $this->yearly_bonus,
             'sales_comission' => $this->sales_comission,
@@ -32,7 +38,6 @@ class EmployeePayrollResource extends JsonResource
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'pay_date' => $this->pay_date
-
         ];
     }
 }
