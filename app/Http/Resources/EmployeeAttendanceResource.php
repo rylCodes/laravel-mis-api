@@ -16,6 +16,7 @@ class EmployeeAttendanceResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'staff_id' => $this->staff_id,
             'name' => $this->staff->firstname . ' ' . $this->staff->lastname,
             'gender' => $this->staff->gender,
             'contact_no' => $this->staff->contact_no,
