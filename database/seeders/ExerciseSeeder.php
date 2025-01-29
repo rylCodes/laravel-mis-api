@@ -28,7 +28,7 @@ class ExerciseSeeder extends Seeder
         ]);
 
         Exercise::create([
-            "name" => "Monthly Tredmill",
+            "name" => "Monthly Treadmill",
             "price" => 550.00,
             "tag" => "monthly",
             'short_description' => 'Treadmill per Month'
@@ -73,7 +73,7 @@ class ExerciseSeeder extends Seeder
             "name" => "Dance Studio for Student",
             "price" => 15.00,
             "tag" => "session",
-            'short_description' => 'Dance Studio for Regular'
+            'short_description' => 'Dance Studio for Student'
         ]);
 
         Exercise::create([
