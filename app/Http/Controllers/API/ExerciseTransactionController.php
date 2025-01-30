@@ -85,6 +85,7 @@ class ExerciseTransactionController extends Controller
                     ];
                 }),
                 'total_price' => $transactions->sum('price'),
+                'created_at' => $firstTransaction->created_at,
             ];
         });
 

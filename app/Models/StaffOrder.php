@@ -14,16 +14,11 @@ class StaffOrder extends Model
     use HasFactory;
     use SoftDeletes;
 
-    protected $fillable = ['client_id', 'total_amount', 'status'];
+    protected $fillable = ['transaction_code', 'total_amount', 'status'];
 
     public function items()
     {
         return $this->hasMany(StaffOrderItem::class, 'order_id')->withTrashed();
-    }
-
-    public function client()
-    {
-        return $this->belongsTo(Client::class);
     }
 
     protected static function booted()

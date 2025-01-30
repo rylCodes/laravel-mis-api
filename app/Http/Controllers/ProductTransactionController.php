@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Inventory;
 use App\Models\StaffCart;
 use App\Models\StaffOrder;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\StaffOrderItem;
 use Illuminate\Support\Facades\DB;
@@ -16,19 +17,12 @@ class ProductTransactionController extends Controller
     public function checkout(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:inventories,id',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        $clientId = $validated['client_id'];
-
-        $customer = Client::find($clientId);
-
-        if (!$customer) {
-            return response()->json(['error' => "Customer with ID {$clientId} not found"], 404);
-        }
+        $transactionCode = Str::random(12);
 
         DB::beginTransaction();
         try {
@@ -62,7 +56,7 @@ class ProductTransactionController extends Controller
             }
 
             $order = StaffOrder::create([
-                'client_id' => $clientId,
+                'transaction_code' => $transactionCode,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
             ]);
@@ -80,7 +74,7 @@ class ProductTransactionController extends Controller
 
             return response()->json([
                 'message' => 'Checkout successful',
-                'order_id' => $order->id,
+                'transaction_code' => $order->transaction_code,
             ], 200);
 
         } catch (\Exception $e) {
@@ -89,41 +83,14 @@ class ProductTransactionController extends Controller
         }
     }
 
-
     public function show()
     {
-        $orders = StaffOrderItem::with(['order.client', 'product'])->get();
+        $orders = StaffOrder::with(['items'])->get(); // Eager load items
 
-        $formattedOrders = $orders->groupBy('order_id')->map(function ($items) {
-            $order = $items->first()->order; // Assuming the order relation is properly set up
-            $totalAmount = $items->sum(function ($item) {
-                return $item->price * $item->quantity;
-            });
-
-            return [
-                'order_id' => $order->id,
-                'client_id' => $order->client_id,
-                'client_name' => $order->client->firstname . ' ' . $order->client->lastname,
-                'client_email' => $order->client->email,
-                'gender' => $order->client->gender,
-                'contact_no' => $order->client->contact_no,
-                'total_amount' => $totalAmount,
-                'status' => $order->status,
-                'Items' => $items->map(function ($item) {
-                    return [
-                        'item_name' => $item->product->name,
-                        'item_description' => $item->product->short_description,
-                        'base_price' => $item->price,
-                        'price' => $item->price * $item->quantity,
-                        'quantity' => $item->quantity,
-
-                    ];
-                }),
-                'transaction_date' => $order->created_at->format('Y-m-d'),
-            ];
-        });
-
-        return $formattedOrders;
+        return response()->json([
+            'success' => true,
+            'data' => $orders
+        ]);
     }
 
     public function soft_delete_product_transaction(Request $request, $id)

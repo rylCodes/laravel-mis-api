@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('staff_orders', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id');
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
+            $table->string('transaction_code')->unique();
             $table->decimal('total_amount', 10, 2);
             $table->enum('status', ['pending', 'paid', 'cancelled'])->default('pending');
             $table->softDeletes();
